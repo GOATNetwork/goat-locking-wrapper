@@ -39,9 +39,10 @@ contract ValidatorEntryUpgradeable is
 
     event ValidatorMigrated(
         address validator,
-        address incentivePool,
+        address funder,
         address funderPayee,
-        address funder
+        address operator,
+        address incentivePool
     );
 
     event CommissionRatesUpdated(
@@ -131,22 +132,6 @@ contract ValidatorEntryUpgradeable is
         uint256 newOperatorGoatRate
     ) external onlyOwner {
         require(
-            newFoundationNativeRate <= MAX_COMMISSION_RATE,
-            "Invalid foundation native"
-        );
-        require(
-            newOperatorNativeRate <= MAX_COMMISSION_RATE,
-            "Invalid operator native"
-        );
-        require(
-            newFoundationGoatRate <= MAX_COMMISSION_RATE,
-            "Invalid foundation goat"
-        );
-        require(
-            newOperatorGoatRate <= MAX_COMMISSION_RATE,
-            "Invalid operator goat"
-        );
-        require(
             newFoundationNativeRate + newOperatorNativeRate <=
                 MAX_COMMISSION_RATE,
             "Native rate overflow"
@@ -189,9 +174,9 @@ contract ValidatorEntryUpgradeable is
     /// @param allowanceUpdatePeriod Duration of allowance windows.
     function migrate(
         address validator,
-        address operator,
-        address funderPayee,
         address funder,
+        address funderPayee,
+        address operator,
         uint256 operatorNativeAllowance,
         uint256 operatorTokenAllowance,
         uint256 allowanceUpdatePeriod
@@ -200,7 +185,6 @@ contract ValidatorEntryUpgradeable is
         require(!info.active, "Already migrated");
         require(address(this) == underlying.owners(validator), "Not the owner");
         require(msg.sender == info.funder, "Not registered");
-        require(foundation != address(0), "Foundation not set");
         require(operator != address(0), "Invalid operator payee");
         require(funderPayee != address(0), "Invalid funder payee address");
         require(funder != address(0), "Invalid funder address");
@@ -232,9 +216,10 @@ contract ValidatorEntryUpgradeable is
 
         emit ValidatorMigrated(
             validator,
-            validators[validator].incentivePool,
+            funder,
             funderPayee,
-            funder
+            operator,
+            validators[validator].incentivePool
         );
     }
 
@@ -420,8 +405,6 @@ contract ValidatorEntryUpgradeable is
     /// @dev Pushes rewards plus commissions to the relevant parties.
     /// @param info Validator metadata referencing the incentive pool.
     function _distributeReward(ValidatorInfo storage info) internal {
-        require(foundation != address(0), "Foundation not set");
-
         IncentivePool(info.incentivePool).distributeReward(
             info.funderPayee,
             foundation,
